@@ -3,10 +3,10 @@
 import { useForm } from 'react-hook-form';
 import { useContractStore } from '@/store/useContractStore';
 import { useEffect } from 'react';
-import { Template } from '@/types/template';
+import { AnyTemplate } from '@/types/template';
 
 interface DynamicFormProps {
-    template: Template;
+    template: AnyTemplate;
 }
 
 export const DynamicForm = ({ template }: DynamicFormProps) => {
@@ -32,7 +32,7 @@ export const DynamicForm = ({ template }: DynamicFormProps) => {
 
     return (
         <form className="space-y-6 p-6 bg-gray-50 h-full overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">{template.title} 작성</h2>
+            <h2 className="text-xl font-bold mb-4 text-gray-900">{template.title} 작성</h2>
 
             {template.sections.map((section) => (
                 <div key={section.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -47,14 +47,14 @@ export const DynamicForm = ({ template }: DynamicFormProps) => {
                                 {field.type === 'textarea' ? (
                                     <textarea
                                         {...register(field.id, { required: field.required })}
-                                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border min-h-[100px]"
+                                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border min-h-[100px] text-gray-900 placeholder-gray-500"
                                         placeholder={field.placeholder}
                                     />
                                 ) : (
                                     <input
                                         type={field.type === 'currency' ? 'number' : field.type}
                                         {...register(field.id, { required: field.required })}
-                                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border text-gray-900 placeholder-gray-500"
                                         placeholder={field.placeholder}
                                     />
                                 )}

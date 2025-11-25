@@ -1,25 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
 import { getTemplateById } from '@/data/templates';
+import { ContractData } from '@/types/template';
+import { compileHtmlTemplate } from '@/lib/template-compiler';
+
+function generateAiContractHtml(contract: ContractData): string {
+  // 변수를 실제 값으로 치환하는 함수
+  const substituteVariables = (content: string): string => {
+    if (!contract.variables) return content;
+    let result = content;
+    Object.entries(contract.variables).forEach(([key, value]) => {
+      const placeholder = `[${key}]`;
+      const displayValue = value || placeholder;
+      result = result.split(placeholder).join(displayValue);
+    });
+    return result;
+  };
+
+  const sectionsHtml = contract.sections
+    .map(
+      (section) => `
+      <div style="margin-bottom: 20px;">
+        <h3 style="font-weight: bold; margin-bottom: 8px;">${section.title}</h3>
+        <div style="white-space: pre-wrap;">${substituteVariables(section.content)}</div>
+      </div>
+    `
+    )
+    .join('');
+
+  return `
+    <h1 style="text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 30px;">${contract.title}</h1>
+    ${sectionsHtml}
+    <div style="margin-top: 50px; display: flex; justify-content: space-between;">
+      <div style="text-align: center;">
+        <p style="font-weight: bold; margin-bottom: 16px;">(갑)</p>
+        <p>상호: ${contract.variables?.['갑_명칭'] || '________________'}</p>
+        <p>주소: ${contract.variables?.['갑_주소'] || '________________'}</p>
+        <p>대표자: ${contract.variables?.['갑_대표자'] || '__________'} (서명)</p>
+      </div>
+      <div style="text-align: center;">
+        <p style="font-weight: bold; margin-bottom: 16px;">(을)</p>
+        <p>상호/성명: ${contract.variables?.['을_명칭'] || '________________'}</p>
+        <p>주소: ${contract.variables?.['을_주소'] || '________________'}</p>
+        <p>연락처: ${contract.variables?.['을_연락처'] || '________________'}</p>
+      </div>
+    </div>
+  `;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { templateId, data } = await req.json();
-    const template = getTemplateById(templateId);
+    const { templateId, data, isAiMode, htmlTemplate, title } = await req.json();
 
-    if (!template) {
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+    let contentHtml: string;
+    let filename: string;
+
+    if (isAiMode && data) {
+      const aiContract = data as ContractData;
+      contentHtml = generateAiContractHtml(aiContract);
+      filename = aiContract.title || 'ai_contract';
+    } else if (htmlTemplate) {
+      // 커스텀 템플릿인 경우
+      const compile = compileHtmlTemplate(htmlTemplate);
+      contentHtml = compile(data);
+      filename = title || 'custom_contract';
+    } else {
+      const template = getTemplateById(templateId);
+      if (!template) {
+        return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+      }
+      contentHtml = template.htmlContent(data);
+      filename = template.id;
     }
 
-    // Launch puppeteer
     const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
-
-    // Generate HTML content using the template's renderer
-    const contentHtml = template.htmlContent(data);
 
     const fullHtml = `
       <!DOCTYPE html>
@@ -66,14 +124,19 @@ export async function POST(req: NextRequest) {
 
     await browser.close();
 
+    // 한글 파일명을 위한 인코딩
+    const encodedFilename = encodeURIComponent(`${filename}.pdf`);
+
     return new NextResponse(Buffer.from(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${template.id}.pdf"`,
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('PDF Generation Error:', error);
-    return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    return NextResponse.json({ error: error.message || 'Failed to generate PDF' }, { status: 500 });
   }
 }

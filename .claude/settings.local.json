@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e:*)",
+      "Bash(printf:*)",
+      "Bash(app/page.tsx)",
+      "Bash(components/TextSelectionPopup.tsx)",
+      "Bash(yarn add:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
